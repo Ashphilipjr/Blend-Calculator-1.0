@@ -41,7 +41,7 @@
 <body>
 <div id="root"></div>
 
-<script type="text/babel" data-presets="react">
+<script type="text/plain" id="app-source">
 const { useState } = React;
 
 // ---- Minimal inline icon set (stroke style, currentColor) ----
@@ -405,7 +405,20 @@ const styles = {
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+root.render(React.createElement(App));
+</script>
+
+<script>
+  (function () {
+    var src = document.getElementById('app-source').textContent;
+    var output = Babel.transform(src, {
+      presets: [['react', { runtime: 'classic' }]],
+      filename: 'app.jsx',
+    }).code;
+    var script = document.createElement('script');
+    script.text = output;
+    document.body.appendChild(script);
+  })();
 </script>
 
 <script>
