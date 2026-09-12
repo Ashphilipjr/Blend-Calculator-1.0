@@ -1,0 +1,15 @@
+{
+  "name": "Alloy Blend & Charge Costing",
+  "short_name": "Alloy Costing",
+  "description": "Inventory, yield-adjusted chemistry, and margin calculator for alloy blending.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#14140F",
+  "theme_color": "#14140F",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
