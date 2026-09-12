@@ -26,7 +26,6 @@
   ::selection { background: #C4622D; color: #14140F; }
   #root { min-height: 100vh; }
 
-  /* Mobile responsiveness */
   @media (max-width: 860px) {
     .main-grid { grid-template-columns: 1fr !important; }
   }
@@ -35,6 +34,15 @@
     .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
     .header-row { flex-direction: column; align-items: flex-start !important; }
     .header-controls { width: 100%; justify-content: space-between; }
+  }
+
+  @media print {
+    body, .page-pad { background: #fff !important; color: #111 !important; }
+    .header-controls button { display: none !important; }
+    .main-grid { grid-template-columns: 1fr !important; }
+    input { border: none !important; background: transparent !important; color: #111 !important; -webkit-print-color-adjust: exact; }
+    section, .kpi-grid > div { border: 1px solid #ccc !important; background: #fff !important; break-inside: avoid; }
+    * { color: #111 !important; }
   }
 </style>
 </head>
@@ -65,26 +73,25 @@ const XIcon = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1=
 const FileCheckIcon = (p) => <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></Icon>;
 const ReceiptIcon = (p) => <Icon {...p}><path d="M4 2h16v20l-3-2-3 2-3-2-3 2-3-2-1 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/></Icon>;
 const TrashIcon = (p) => <Icon {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></Icon>;
+const BoxIcon = (p) => <Icon {...p}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></Icon>;
+const ShareIcon = (p) => <Icon {...p}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></Icon>;
+const PrinterIcon = (p) => <Icon {...p}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></Icon>;
 
-const ELEMENTS = ['Ni', 'Cr', 'Mo', 'Fe', 'Cu', 'C'];
+// 12 tracked elements, matching the reference blend sheet
+const ELEMENTS = ['Ni', 'Cr', 'Mo', 'Fe', 'Cu', 'C', 'W', 'Co', 'Mn', 'Ti', 'Al', 'Nb'];
+const zeroEl = {};
+ELEMENTS.forEach((e) => { zeroEl[e] = 0; });
 
 const initialMaterials = [
-  { id: 'mat-1', name: 'Inconel 625 Scrap', category: 'High Nickel', elements: { Ni: 58.0, Cr: 21.5, Mo: 9.0, Fe: 5.0, Cu: 0.2, C: 0.05 }, availableQtyKg: 5000, purchasePricePerKg: 14.5, yieldPercent: 96.0, selected: true, allocatedQtyKg: 3500 },
-  { id: 'mat-2', name: 'SS 316 Scrap', category: 'Stainless Steel', elements: { Ni: 10.5, Cr: 16.5, Mo: 2.1, Fe: 69.5, Cu: 0.3, C: 0.03 }, availableQtyKg: 10000, purchasePricePerKg: 1.85, yieldPercent: 97.5, selected: true, allocatedQtyKg: 4000 },
-  { id: 'mat-3', name: 'Pure Nickel Cathode', category: 'Pure Metals', elements: { Ni: 99.8, Cr: 0.0, Mo: 0.0, Fe: 0.1, Cu: 0.0, C: 0.01 }, availableQtyKg: 2000, purchasePricePerKg: 17.2, yieldPercent: 99.5, selected: true, allocatedQtyKg: 500 },
-  { id: 'mat-4', name: 'Ferro-Molybdenum (70% Mo)', category: 'Ferroalloys', elements: { Ni: 0.0, Cr: 0.0, Mo: 70.0, Fe: 29.5, Cu: 0.0, C: 0.1 }, availableQtyKg: 1500, purchasePricePerKg: 28.0, yieldPercent: 95.0, selected: true, allocatedQtyKg: 200 },
+  { id: 'mat-1', name: 'SS 304', category: 'Stainless Steel', elements: { ...zeroEl, C: 0, Mo: 0.024108, Ni: 8.2, Cr: 17.75, Fe: 72.2, Cu: 0.151, Mn: 0.73 }, availableQtyKg: 0, qtyPerContainerKg: 20500, yieldPercent: 98, purchasePricePerKg: 1.22885, selected: true },
+  { id: 'mat-2', name: 'SS 430', category: 'Stainless Steel', elements: { ...zeroEl, Mo: 0.065, Ni: 0.198, Cr: 15.43, Fe: 83.5, Cu: 0.08, Mn: 0.28, Ti: 0.023 }, availableQtyKg: 38848, qtyPerContainerKg: 500, yieldPercent: 98, purchasePricePerKg: 0.50919, selected: true },
+  { id: 'mat-3', name: 'SS 201', category: 'Stainless Steel', elements: { ...zeroEl, C: 0.15, Mo: 0.069, Ni: 1.1, Cr: 14.43, Fe: 74.7, Cu: 0.93, Mn: 7.83 }, availableQtyKg: 48775, qtyPerContainerKg: 1000, yieldPercent: 98, purchasePricePerKg: 0.55001, selected: true },
+  { id: 'mat-4', name: 'HC Ferro Chrome', category: 'Ferroalloys', elements: { ...zeroEl, C: 4.49, Cr: 29, Mn: 0.55 }, availableQtyKg: 46040, qtyPerContainerKg: 0, yieldPercent: 94, purchasePricePerKg: 0.5389, selected: true },
+  { id: 'mat-5', name: 'Shredded SS 300 series', category: 'Stainless Steel', elements: { ...zeroEl, C: 0.0069, Mo: 0.225, Ni: 7.13, Cr: 16.99, Fe: 71.9, Cu: 0.434, Mn: 2.49 }, availableQtyKg: 65000, qtyPerContainerKg: 2000, yieldPercent: 98, purchasePricePerKg: 1.15, selected: true },
 ];
 
-const initialRequirement = {
-  gradeName: 'High-Ni Superalloy Specification',
-  targetWeightKg: 8000,
-  targetSalesPricePerKg: 12.5,
-  minSpecs: { Ni: 30.0, Cr: 14.0, Mo: 4.0, Fe: 0.0, Cu: 0.0, C: 0.0 },
-  maxSpecs: { Ni: 42.0, Cr: 19.0, Mo: 6.5, Fe: 45.0, Cu: 0.8, C: 0.08 },
-};
-
-const emptyElements = { Ni: 0, Cr: 0, Mo: 0, Fe: 0, Cu: 0, C: 0 };
-const STORAGE_KEY = 'alloy-costing-state-v1';
+const emptyElements = { ...zeroEl };
+const STORAGE_KEY = 'alloy-costing-state-v2';
 
 function fmt(n, opts = {}) {
   return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2, ...opts });
@@ -102,12 +109,27 @@ function App() {
   const saved = loadSaved();
   const [unit, setUnit] = useState(saved?.unit || 'MT');
   const [materials, setMaterials] = useState(saved?.materials || initialMaterials);
-  const [target, setTarget] = useState(saved?.target || initialRequirement);
-  const [expenses, setExpenses] = useState(saved?.expenses || {
-    freightCostTotal: 450, clearanceCostTotal: 300, operationalCostTotal: 850, otherExpensesTotal: 200, financeCostPercent: 1.5,
+  const [containers, setContainers] = useState(saved?.containers ?? 8);
+
+  const [target, setTarget] = useState(saved?.target || {
+    gradeName: 'Low Nickel Alloys 04',
+    minSpecs: { ...zeroEl, Cr: 14.5, Fe: 72, Ni: 7.6 },
+    maxSpecs: { ...zeroEl, Cr: 18, Fe: 100, Ni: 8.5, C: 0.5, W: 0.5, Co: 0.22, Mn: 1.5, Ti: 0.02, Nb: 0.02 },
   });
+
+  const [contract, setContract] = useState(saved?.contract || {
+    customerName: 'Aperam Sourcing SCA',
+    contractNo: '',
+    loadingDate: '',
+    salesContractPerMT: 1475,
+    freightPerMT: 252,
+    clearancePerMT: 84,
+    financePerMT: 30,
+    operationalPerMT: 50,
+  });
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newGrade, setNewGrade] = useState({ name: '', category: 'Scrap Metal', availableQty: 0, price: 0, yieldPercent: 96, elements: { ...emptyElements } });
+  const [newGrade, setNewGrade] = useState({ name: '', category: 'Scrap Metal', availableQty: 0, qtyPerContainer: 0, price: 0, yieldPercent: 96, elements: { ...emptyElements } });
   const [savedFlash, setSavedFlash] = useState(false);
 
   const persist = (next) => {
@@ -117,40 +139,90 @@ function App() {
       setTimeout(() => setSavedFlash(false), 1200);
     } catch (e) {}
   };
+  const saveNow = () => persist({ unit, materials, containers, target, contract });
 
-  const saveNow = () => persist({ unit, materials, target, expenses });
+  const buildShareText = () => {
+    const lines = [];
+    lines.push(`BLEND SHEET — ${target.gradeName || 'Untitled'}`);
+    lines.push(`Customer: ${contract.customerName || '-'}   Contract: ${contract.contractNo || '-'}   Loading: ${contract.loadingDate || '-'}`);
+    lines.push(`Containers: ${containers}`);
+    lines.push('');
+    lines.push('MATERIALS TO PREPARE:');
+    activeMaterials.forEach((m) => {
+      const qty = toDisplayWeight(chargeQtyKg(m));
+      lines.push(`- ${m.name}: ${fmt(qty)} ${unit} (yield ${m.yieldPercent}%)`);
+    });
+    lines.push('');
+    lines.push(`Total charge: ${fmt(toDisplayWeight(totalChargedWeightKg))} ${unit}`);
+    lines.push(`Expected recovered output: ${fmt(toDisplayWeight(totalRecoveredWeightKg))} ${unit}`);
+    lines.push('');
+    lines.push('BLENDED CHEMISTRY (%):');
+    ELEMENTS.forEach((el) => {
+      if (calculatedComposition[el] > 0 || target.maxSpecs[el] > 0) {
+        lines.push(`  ${el}: ${calculatedComposition[el]}%  (spec ${target.minSpecs[el]}–${target.maxSpecs[el]}%)`);
+      }
+    });
+    lines.push('');
+    lines.push(`Blend cost: $${fmt(blendCostPerMT)}/MT   Total cost: $${fmt(totalCostPerMT)}/MT   Margin: $${fmt(grossMarginPerMT)}/MT`);
+    return lines.join('\n');
+  };
 
+  const shareBlend = async () => {
+    const text = buildShareText();
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Blend Sheet — ${target.gradeName || 'Blend'}`, text });
+        return;
+      } catch (e) { /* user cancelled or unsupported, fall through to clipboard */ }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareFlash(true);
+      setTimeout(() => setShareFlash(false), 1500);
+    } catch (e) {}
+  };
+
+  const [shareFlash, setShareFlash] = useState(false);
+
+  // Weight unit only affects the materials/inventory display. Costs are always USD/MT.
   const weightFactor = unit === 'MT' ? 0.001 : 1;
-  const priceFactor = unit === 'MT' ? 1000 : 1;
   const toDisplayWeight = (kg) => kg * weightFactor;
   const toKgWeight = (v) => v / weightFactor;
-  const toDisplayPrice = (perKg) => perKg * priceFactor;
-  const toKgPrice = (v) => v / priceFactor;
+  const toDisplayPricePerKg = (perKg) => unit === 'MT' ? perKg * 1000 : perKg;
+  const toKgPriceFromDisplay = (v) => unit === 'MT' ? v / 1000 : v;
+
+  // Charge qty per material = qty per container x number of containers
+  const chargeQtyKg = (m) => Number(m.qtyPerContainerKg || 0) * Number(containers || 0);
 
   const activeMaterials = materials.filter((m) => m.selected);
-  const totalChargedWeightKg = activeMaterials.reduce((s, m) => s + Number(m.allocatedQtyKg || 0), 0);
-  const totalRecoveredWeightKg = activeMaterials.reduce((s, m) => s + Number(m.allocatedQtyKg || 0) * ((m.yieldPercent || 100) / 100), 0);
+  const totalChargedWeightKg = activeMaterials.reduce((s, m) => s + chargeQtyKg(m), 0);
+  const totalRecoveredWeightKg = activeMaterials.reduce((s, m) => s + chargeQtyKg(m) * ((m.yieldPercent || 100) / 100), 0);
+  const totalRecoveredMT = totalRecoveredWeightKg / 1000;
 
   const calculatedComposition = ELEMENTS.reduce((acc, el) => {
     if (totalRecoveredWeightKg === 0) { acc[el] = 0; return acc; }
     const massKg = activeMaterials.reduce((s, m) => {
-      const netKg = Number(m.allocatedQtyKg || 0) * ((m.yieldPercent || 100) / 100);
-      return s + netKg * (m.elements[el] / 100);
+      const netKg = chargeQtyKg(m) * ((m.yieldPercent || 100) / 100);
+      return s + netKg * ((m.elements[el] || 0) / 100);
     }, 0);
-    acc[el] = Number(((massKg / totalRecoveredWeightKg) * 100).toFixed(2));
+    acc[el] = Number(((massKg / totalRecoveredWeightKg) * 100).toFixed(4));
     return acc;
   }, {});
 
-  const rawMaterialCostTotal = activeMaterials.reduce((s, m) => s + Number(m.allocatedQtyKg || 0) * Number(m.purchasePricePerKg || 0), 0);
-  const totalDirectOverheads = Number(expenses.freightCostTotal || 0) + Number(expenses.clearanceCostTotal || 0) + Number(expenses.operationalCostTotal || 0) + Number(expenses.otherExpensesTotal || 0);
-  const subtotalBeforeFinance = rawMaterialCostTotal + totalDirectOverheads;
-  const financeFeeTotal = subtotalBeforeFinance * (Number(expenses.financeCostPercent || 0) / 100);
-  const grandTotalExpenses = subtotalBeforeFinance + financeFeeTotal;
-  const netCostPerUnit = totalRecoveredWeightKg > 0 ? grandTotalExpenses / totalRecoveredWeightKg / weightFactor : 0;
-  const totalGrossRevenue = totalRecoveredWeightKg * Number(target.targetSalesPricePerKg || 0);
-  const netGrossProfit = totalGrossRevenue - grandTotalExpenses;
-  const grossMarginPercent = totalGrossRevenue > 0 ? (netGrossProfit / totalGrossRevenue) * 100 : 0;
-  const weightVsTargetPercent = target.targetWeightKg > 0 ? (totalRecoveredWeightKg / target.targetWeightKg) * 100 : 0;
+  // Raw material (blend) cost, always resolved in USD/MT regardless of the weight toggle
+  const rawMaterialCostTotalUSD = activeMaterials.reduce((s, m) => s + chargeQtyKg(m) * Number(m.purchasePricePerKg || 0), 0);
+  const blendCostPerMT = totalRecoveredMT > 0 ? rawMaterialCostTotalUSD / totalRecoveredMT : 0;
+
+  const totalCostPerMT =
+    blendCostPerMT +
+    Number(contract.freightPerMT || 0) +
+    Number(contract.clearancePerMT || 0) +
+    Number(contract.financePerMT || 0) +
+    Number(contract.operationalPerMT || 0);
+
+  const grossMarginPerMT = Number(contract.salesContractPerMT || 0) - totalCostPerMT;
+  const grossMarginTotalUSD = grossMarginPerMT * totalRecoveredMT;
+  const grossMarginPercent = contract.salesContractPerMT > 0 ? (grossMarginPerMT / Number(contract.salesContractPerMT)) * 100 : 0;
 
   const updateMaterial = (id, key, val) => setMaterials((prev) => prev.map((m) => (m.id === id ? { ...m, [key]: val } : m)));
   const removeMaterial = (id) => setMaterials((prev) => prev.filter((m) => m.id !== id));
@@ -160,12 +232,14 @@ function App() {
     if (!newGrade.name.trim()) return;
     const created = {
       id: `mat-${Date.now()}`, name: newGrade.name.trim(), category: newGrade.category,
-      availableQtyKg: toKgWeight(Number(newGrade.availableQty) || 0), purchasePricePerKg: toKgPrice(Number(newGrade.price) || 0),
-      yieldPercent: Number(newGrade.yieldPercent) || 0, elements: newGrade.elements, selected: true, allocatedQtyKg: 0,
+      availableQtyKg: toKgWeight(Number(newGrade.availableQty) || 0),
+      qtyPerContainerKg: toKgWeight(Number(newGrade.qtyPerContainer) || 0),
+      purchasePricePerKg: toKgPriceFromDisplay(Number(newGrade.price) || 0),
+      yieldPercent: Number(newGrade.yieldPercent) || 0, elements: newGrade.elements, selected: true,
     };
     setMaterials((prev) => [...prev, created]);
     setIsAddModalOpen(false);
-    setNewGrade({ name: '', category: 'Scrap Metal', availableQty: 0, price: 0, yieldPercent: 96, elements: { ...emptyElements } });
+    setNewGrade({ name: '', category: 'Scrap Metal', availableQty: 0, qtyPerContainer: 0, price: 0, yieldPercent: 96, elements: { ...emptyElements } });
   };
 
   return (
@@ -175,7 +249,7 @@ function App() {
           <div style={styles.brandMark}><CalculatorIcon size={20} color="#14140F" /></div>
           <div>
             <h1 style={styles.title}>Alloy Blend &amp; Charge Costing</h1>
-            <p style={styles.subtitle}>Inventory, yield-adjusted chemistry, and margin against contract spec.</p>
+            <p style={styles.subtitle}>Container-based blend, yield-adjusted chemistry, and margin in USD/MT.</p>
           </div>
         </div>
         <div className="header-controls" style={styles.headerControls}>
@@ -184,6 +258,8 @@ function App() {
             <button onClick={() => setUnit('kg')} style={{ ...styles.unitBtn, ...(unit === 'kg' ? styles.unitBtnActive : {}) }}><ScaleIcon size={13} /> kg</button>
           </div>
           <button onClick={saveNow} style={styles.saveBtn}>{savedFlash ? 'Saved' : 'Save'}</button>
+          <button onClick={shareBlend} style={styles.saveBtn}><ShareIcon size={14} /> {shareFlash ? 'Copied' : 'Share'}</button>
+          <button onClick={() => window.print()} style={styles.saveBtn}><PrinterIcon size={14} /> Print/PDF</button>
           <button onClick={() => setIsAddModalOpen(true)} style={styles.addBtn}><PlusIcon size={15} /> Add grade</button>
         </div>
       </div>
@@ -192,37 +268,48 @@ function App() {
         <div style={styles.kpiCard}>
           <div style={styles.kpiLabel}><PackageIcon size={13} /> Recovered output</div>
           <div style={styles.kpiValue}>{fmt(toDisplayWeight(totalRecoveredWeightKg))} <span style={styles.kpiUnit}>{unit}</span></div>
-          <div style={styles.kpiSub}>Charged {fmt(toDisplayWeight(totalChargedWeightKg))} {unit} · {fmt(weightVsTargetPercent, { maximumFractionDigits: 0 })}% of target</div>
+          <div style={styles.kpiSub}>Charged {fmt(toDisplayWeight(totalChargedWeightKg))} {unit} · {fmt(containers, {maximumFractionDigits:0})} containers</div>
         </div>
         <div style={styles.kpiCard}>
-          <div style={styles.kpiLabel}><DollarIcon size={13} /> Net cost / {unit}</div>
-          <div style={{ ...styles.kpiValue, color: '#D98A4A' }}>${fmt(netCostPerUnit)}</div>
-          <div style={styles.kpiSub}>Total expenses ${fmt(grandTotalExpenses)}</div>
+          <div style={styles.kpiLabel}><DollarIcon size={13} /> Blend cost / MT</div>
+          <div style={{ ...styles.kpiValue, color: '#D98A4A' }}>${fmt(blendCostPerMT)}</div>
+          <div style={styles.kpiSub}>Total cost incl. overheads: ${fmt(totalCostPerMT)}/MT</div>
         </div>
         <div style={styles.kpiCard}>
-          <div style={styles.kpiLabel}><TrendingUpIcon size={13} /> Gross revenue</div>
-          <div style={{ ...styles.kpiValue, color: '#8FB89A' }}>${fmt(totalGrossRevenue)}</div>
-          <div style={styles.kpiSub}>At ${fmt(toDisplayPrice(target.targetSalesPricePerKg))}/{unit} contract price</div>
+          <div style={styles.kpiLabel}><TrendingUpIcon size={13} /> Sales contract</div>
+          <div style={{ ...styles.kpiValue, color: '#8FB89A' }}>${fmt(contract.salesContractPerMT)}<span style={styles.kpiUnit}>/MT</span></div>
+          <div style={styles.kpiSub}>{contract.customerName || 'No customer set'}</div>
         </div>
-        <div style={{ ...styles.kpiCard, borderColor: netGrossProfit >= 0 ? '#3E5B45' : '#6E3A2E', background: netGrossProfit >= 0 ? 'rgba(111,158,120,0.06)' : 'rgba(181,83,61,0.08)' }}>
-          <div style={styles.kpiLabel}><PercentIcon size={13} /> Gross profit &amp; margin</div>
-          <div style={{ ...styles.kpiValue, color: netGrossProfit >= 0 ? '#8FB89A' : '#D08267' }}>${fmt(netGrossProfit)}</div>
-          <div style={{ ...styles.kpiSub, color: netGrossProfit >= 0 ? '#8FB89A' : '#D08267' }}>Margin {fmt(grossMarginPercent)}%</div>
+        <div style={{ ...styles.kpiCard, borderColor: grossMarginPerMT >= 0 ? '#3E5B45' : '#6E3A2E', background: grossMarginPerMT >= 0 ? 'rgba(111,158,120,0.06)' : 'rgba(181,83,61,0.08)' }}>
+          <div style={styles.kpiLabel}><PercentIcon size={13} /> Gross margin</div>
+          <div style={{ ...styles.kpiValue, color: grossMarginPerMT >= 0 ? '#8FB89A' : '#D08267' }}>${fmt(grossMarginPerMT)}<span style={styles.kpiUnit}>/MT</span></div>
+          <div style={{ ...styles.kpiSub, color: grossMarginPerMT >= 0 ? '#8FB89A' : '#D08267' }}>{fmt(grossMarginPercent)}% · ${fmt(grossMarginTotalUSD)} total</div>
         </div>
       </div>
 
       <div className="main-grid" style={styles.mainGrid}>
         <div style={styles.leftCol}>
           <section style={styles.panel}>
-            <div style={styles.panelHeader}><LayersIcon size={16} color="#C4622D" /><h2 style={styles.panelTitle}>Stock inventory &amp; charge allocation</h2></div>
+            <div style={styles.panelHeader}><BoxIcon size={16} color="#9AA0A6" /><h2 style={styles.panelTitle}>Blend batch size</h2></div>
+            <div style={styles.formStack}>
+              <label style={styles.fieldLabel}>Number of containers
+                <input type="number" value={containers} onChange={(e) => setContainers(parseFloat(e.target.value) || 0)} style={styles.textInput} />
+              </label>
+              <div style={styles.hint}>Each material's charge quantity = qty per container × number of containers.</div>
+            </div>
+          </section>
+
+          <section style={styles.panel}>
+            <div style={styles.panelHeader}><LayersIcon size={16} color="#C4622D" /><h2 style={styles.panelTitle}>Stock inventory &amp; blend allocation</h2></div>
             <div style={{ overflowX: 'auto' }}>
               <table style={styles.table}>
                 <thead><tr style={styles.theadRow}>
                   <th style={{ ...styles.th, width: 34 }}></th>
                   <th style={styles.th}>Material</th>
                   <th style={styles.th}>Available ({unit})</th>
-                  <th style={styles.th}>Price ($/{unit})</th>
+                  <th style={styles.th}>Per container ({unit})</th>
                   <th style={styles.th}>Yield %</th>
+                  <th style={styles.th}>Price ($/{unit})</th>
                   <th style={styles.th}>Charge ({unit})</th>
                   <th style={{ ...styles.th, width: 34 }}></th>
                 </tr></thead>
@@ -232,9 +319,10 @@ function App() {
                       <td style={styles.td}><input type="checkbox" checked={mat.selected} onChange={(e) => updateMaterial(mat.id, 'selected', e.target.checked)} style={{ width: 15, height: 15, accentColor: '#C4622D' }} /></td>
                       <td style={styles.td}><div style={styles.matName}>{mat.name}</div><div style={styles.matCategory}>{mat.category}</div></td>
                       <td style={styles.td}><input type="number" value={Number(toDisplayWeight(mat.availableQtyKg).toFixed(2))} onChange={(e) => updateMaterial(mat.id, 'availableQtyKg', toKgWeight(parseFloat(e.target.value) || 0))} style={styles.numInput} /></td>
-                      <td style={styles.td}><input type="number" step="0.01" value={Number(toDisplayPrice(mat.purchasePricePerKg).toFixed(2))} onChange={(e) => updateMaterial(mat.id, 'purchasePricePerKg', toKgPrice(parseFloat(e.target.value) || 0))} style={{ ...styles.numInput, color: '#D98A4A' }} /></td>
-                      <td style={styles.td}><input type="number" step="0.1" value={mat.yieldPercent} onChange={(e) => updateMaterial(mat.id, 'yieldPercent', parseFloat(e.target.value) || 0)} style={{ ...styles.numInput, width: 60 }} /></td>
-                      <td style={styles.td}><input type="number" disabled={!mat.selected} value={Number(toDisplayWeight(mat.allocatedQtyKg).toFixed(2))} onChange={(e) => updateMaterial(mat.id, 'allocatedQtyKg', toKgWeight(parseFloat(e.target.value) || 0))} style={styles.chargeInput} /></td>
+                      <td style={styles.td}><input type="number" value={Number(toDisplayWeight(mat.qtyPerContainerKg).toFixed(3))} onChange={(e) => updateMaterial(mat.id, 'qtyPerContainerKg', toKgWeight(parseFloat(e.target.value) || 0))} style={styles.numInput} /></td>
+                      <td style={styles.td}><input type="number" step="0.1" value={mat.yieldPercent} onChange={(e) => updateMaterial(mat.id, 'yieldPercent', parseFloat(e.target.value) || 0)} style={{ ...styles.numInput, width: 56 }} /></td>
+                      <td style={styles.td}><input type="number" step="0.001" value={Number(toDisplayPricePerKg(mat.purchasePricePerKg).toFixed(4))} onChange={(e) => updateMaterial(mat.id, 'purchasePricePerKg', toKgPriceFromDisplay(parseFloat(e.target.value) || 0))} style={{ ...styles.numInput, color: '#D98A4A' }} /></td>
+                      <td style={styles.td}><div style={styles.chargeDisplay}>{fmt(toDisplayWeight(chargeQtyKg(mat)))}</div></td>
                       <td style={styles.td}><button onClick={() => removeMaterial(mat.id)} style={styles.iconBtn} title="Remove grade"><TrashIcon size={14} /></button></td>
                     </tr>
                   ))}
@@ -252,9 +340,9 @@ function App() {
                 const compliant = actual >= min && actual <= max;
                 return (
                   <div key={el} style={{ ...styles.chemCard, borderColor: compliant ? '#33312A' : '#6E3A2E', background: compliant ? '#1E1D18' : 'rgba(181,83,61,0.08)' }}>
-                    <div style={styles.chemTop}><span style={styles.chemSymbol}>{el}</span>{compliant ? <CheckIcon size={15} color="#8FB89A" /> : <AlertIcon size={15} color="#D08267" />}</div>
+                    <div style={styles.chemTop}><span style={styles.chemSymbol}>{el}</span>{compliant ? <CheckIcon size={14} color="#8FB89A" /> : <AlertIcon size={14} color="#D08267" />}</div>
                     <div style={styles.chemValue}>{actual}%</div>
-                    <div style={styles.chemRange}>Spec {min}–{max}%</div>
+                    <div style={styles.chemRange}>{min}–{max}%</div>
                   </div>
                 );
               })}
@@ -264,17 +352,21 @@ function App() {
 
         <div style={styles.rightCol}>
           <section style={styles.panel}>
-            <div style={styles.panelHeader}><FileCheckIcon size={16} color="#D98A4A" /><h2 style={styles.panelTitle}>Customer contract</h2></div>
+            <div style={styles.panelHeader}><FileCheckIcon size={16} color="#D98A4A" /><h2 style={styles.panelTitle}>Customer &amp; contract</h2></div>
             <div style={styles.formStack}>
+              <label style={styles.fieldLabel}>Customer name
+                <input type="text" value={contract.customerName} onChange={(e) => setContract((p) => ({ ...p, customerName: e.target.value }))} style={styles.textInput} />
+              </label>
+              <label style={styles.fieldLabel}>Contract No.
+                <input type="text" value={contract.contractNo} onChange={(e) => setContract((p) => ({ ...p, contractNo: e.target.value }))} style={styles.textInput} />
+              </label>
+              <label style={styles.fieldLabel}>Loading date
+                <input type="date" value={contract.loadingDate} onChange={(e) => setContract((p) => ({ ...p, loadingDate: e.target.value }))} style={styles.textInput} />
+              </label>
               <label style={styles.fieldLabel}>Grade / specification name
                 <input type="text" value={target.gradeName} onChange={(e) => setTarget((p) => ({ ...p, gradeName: e.target.value }))} style={styles.textInput} />
               </label>
-              <label style={styles.fieldLabel}>Target output weight ({unit})
-                <input type="number" value={Number(toDisplayWeight(target.targetWeightKg).toFixed(2))} onChange={(e) => setTarget((p) => ({ ...p, targetWeightKg: toKgWeight(parseFloat(e.target.value) || 0) }))} style={styles.textInput} />
-              </label>
-              <label style={styles.fieldLabel}>Contract sales price ($/{unit})
-                <input type="number" step="0.01" value={Number(toDisplayPrice(target.targetSalesPricePerKg).toFixed(2))} onChange={(e) => setTarget((p) => ({ ...p, targetSalesPricePerKg: toKgPrice(parseFloat(e.target.value) || 0) }))} style={{ ...styles.textInput, color: '#8FB89A', fontWeight: 700 }} />
-              </label>
+
               <div style={styles.specTableWrap}>
                 <div style={styles.specTableTitle}>Min / max spec limits (%)</div>
                 <table style={styles.specTable}>
@@ -283,8 +375,8 @@ function App() {
                     {ELEMENTS.map((el) => (
                       <tr key={el}>
                         <td style={styles.specTdLabel}>{el}</td>
-                        <td style={styles.specTd}><input type="number" step="0.1" value={target.minSpecs[el]} onChange={(e) => setTarget((p) => ({ ...p, minSpecs: { ...p.minSpecs, [el]: parseFloat(e.target.value) || 0 } }))} style={styles.specInput} /></td>
-                        <td style={styles.specTd}><input type="number" step="0.1" value={target.maxSpecs[el]} onChange={(e) => setTarget((p) => ({ ...p, maxSpecs: { ...p.maxSpecs, [el]: parseFloat(e.target.value) || 0 } }))} style={styles.specInput} /></td>
+                        <td style={styles.specTd}><input type="number" step="0.01" value={target.minSpecs[el]} onChange={(e) => setTarget((p) => ({ ...p, minSpecs: { ...p.minSpecs, [el]: parseFloat(e.target.value) || 0 } }))} style={styles.specInput} /></td>
+                        <td style={styles.specTd}><input type="number" step="0.01" value={target.maxSpecs[el]} onChange={(e) => setTarget((p) => ({ ...p, maxSpecs: { ...p.maxSpecs, [el]: parseFloat(e.target.value) || 0 } }))} style={styles.specInput} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -294,18 +386,34 @@ function App() {
           </section>
 
           <section style={styles.panel}>
-            <div style={styles.panelHeader}><ReceiptIcon size={16} color="#9AA0A6" /><h2 style={styles.panelTitle}>Overhead &amp; finance costs</h2></div>
+            <div style={styles.panelHeader}><ReceiptIcon size={16} color="#9AA0A6" /><h2 style={styles.panelTitle}>Cost &amp; margin (USD/MT)</h2></div>
             <div style={styles.formStack}>
-              <label style={styles.fieldLabel}>Freight, total ($)<input type="number" value={expenses.freightCostTotal} onChange={(e) => setExpenses((p) => ({ ...p, freightCostTotal: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
-              <label style={styles.fieldLabel}>Customs clearance, total ($)<input type="number" value={expenses.clearanceCostTotal} onChange={(e) => setExpenses((p) => ({ ...p, clearanceCostTotal: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
-              <label style={styles.fieldLabel}>Operational cost, total ($)<input type="number" value={expenses.operationalCostTotal} onChange={(e) => setExpenses((p) => ({ ...p, operationalCostTotal: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
-              <label style={styles.fieldLabel}>Other expenses, total ($)<input type="number" value={expenses.otherExpensesTotal} onChange={(e) => setExpenses((p) => ({ ...p, otherExpensesTotal: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
-              <label style={styles.fieldLabel}>Finance cost (%)<input type="number" step="0.1" value={expenses.financeCostPercent} onChange={(e) => setExpenses((p) => ({ ...p, financeCostPercent: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
+              <label style={styles.fieldLabel}>Sales contract price ($/MT)
+                <input type="number" step="0.01" value={contract.salesContractPerMT} onChange={(e) => setContract((p) => ({ ...p, salesContractPerMT: parseFloat(e.target.value) || 0 }))} style={{ ...styles.textInput, color: '#8FB89A', fontWeight: 700 }} />
+              </label>
+              <label style={styles.fieldLabel}>Freight ($/MT)
+                <input type="number" step="0.01" value={contract.freightPerMT} onChange={(e) => setContract((p) => ({ ...p, freightPerMT: parseFloat(e.target.value) || 0 }))} style={styles.textInput} />
+              </label>
+              <label style={styles.fieldLabel}>Clearance cost ($/MT)
+                <input type="number" step="0.01" value={contract.clearancePerMT} onChange={(e) => setContract((p) => ({ ...p, clearancePerMT: parseFloat(e.target.value) || 0 }))} style={styles.textInput} />
+              </label>
+              <label style={styles.fieldLabel}>Finance cost ($/MT)
+                <input type="number" step="0.01" value={contract.financePerMT} onChange={(e) => setContract((p) => ({ ...p, financePerMT: parseFloat(e.target.value) || 0 }))} style={styles.textInput} />
+              </label>
+              <label style={styles.fieldLabel}>Operational cost ($/MT)
+                <input type="number" step="0.01" value={contract.operationalPerMT} onChange={(e) => setContract((p) => ({ ...p, operationalPerMT: parseFloat(e.target.value) || 0 }))} style={styles.textInput} />
+              </label>
+
               <div style={styles.divider} />
-              <div style={styles.expenseRow}><span>Raw material cost</span><span>${fmt(rawMaterialCostTotal)}</span></div>
-              <div style={styles.expenseRow}><span>Direct overheads</span><span>${fmt(totalDirectOverheads)}</span></div>
-              <div style={styles.expenseRow}><span>Finance fee</span><span>${fmt(financeFeeTotal)}</span></div>
-              <div style={{ ...styles.expenseRow, ...styles.expenseTotalRow }}><span>Total expenses</span><span>${fmt(grandTotalExpenses)}</span></div>
+              <div style={styles.expenseRow}><span>Blend (raw material) cost</span><span>${fmt(blendCostPerMT)}/MT</span></div>
+              <div style={styles.expenseRow}><span>Freight</span><span>${fmt(contract.freightPerMT)}/MT</span></div>
+              <div style={styles.expenseRow}><span>Clearance</span><span>${fmt(contract.clearancePerMT)}/MT</span></div>
+              <div style={styles.expenseRow}><span>Finance</span><span>${fmt(contract.financePerMT)}/MT</span></div>
+              <div style={styles.expenseRow}><span>Operational</span><span>${fmt(contract.operationalPerMT)}/MT</span></div>
+              <div style={{ ...styles.expenseRow, ...styles.expenseTotalRow }}><span>Total cost</span><span>${fmt(totalCostPerMT)}/MT</span></div>
+              <div style={{ ...styles.expenseRow, ...styles.expenseTotalRow, color: grossMarginPerMT >= 0 ? '#8FB89A' : '#D08267' }}>
+                <span>Gross margin</span><span>${fmt(grossMarginPerMT)}/MT</span>
+              </div>
             </div>
           </section>
         </div>
@@ -320,14 +428,17 @@ function App() {
               <label style={styles.fieldLabel}>Category<input type="text" value={newGrade.category} onChange={(e) => setNewGrade((p) => ({ ...p, category: e.target.value }))} style={styles.textInput} /></label>
               <div style={styles.twoCol}>
                 <label style={styles.fieldLabel}>Available ({unit})<input type="number" value={newGrade.availableQty} onChange={(e) => setNewGrade((p) => ({ ...p, availableQty: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
-                <label style={styles.fieldLabel}>Price ($/{unit})<input type="number" step="0.01" value={newGrade.price} onChange={(e) => setNewGrade((p) => ({ ...p, price: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
+                <label style={styles.fieldLabel}>Per container ({unit})<input type="number" value={newGrade.qtyPerContainer} onChange={(e) => setNewGrade((p) => ({ ...p, qtyPerContainer: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
               </div>
-              <label style={styles.fieldLabel}>Yield %<input type="number" step="0.1" value={newGrade.yieldPercent} onChange={(e) => setNewGrade((p) => ({ ...p, yieldPercent: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
+              <div style={styles.twoCol}>
+                <label style={styles.fieldLabel}>Price ($/{unit})<input type="number" step="0.001" value={newGrade.price} onChange={(e) => setNewGrade((p) => ({ ...p, price: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
+                <label style={styles.fieldLabel}>Yield %<input type="number" step="0.1" value={newGrade.yieldPercent} onChange={(e) => setNewGrade((p) => ({ ...p, yieldPercent: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
+              </div>
               <div style={styles.specTableTitle}>Elemental composition (%)</div>
               <div style={styles.elementGrid}>
                 {ELEMENTS.map((el) => (
                   <label key={el} style={styles.elementField}>{el}
-                    <input type="number" step="0.1" value={newGrade.elements[el]} onChange={(e) => setNewGrade((p) => ({ ...p, elements: { ...p.elements, [el]: parseFloat(e.target.value) || 0 } }))} style={styles.specInput} />
+                    <input type="number" step="0.01" value={newGrade.elements[el]} onChange={(e) => setNewGrade((p) => ({ ...p, elements: { ...p.elements, [el]: parseFloat(e.target.value) || 0 } }))} style={styles.specInput} />
                   </label>
                 ))}
               </div>
@@ -351,7 +462,7 @@ const styles = {
   unitToggle: { display: 'flex', border: '1px solid #33312A', borderRadius: 6, overflow: 'hidden' },
   unitBtn: { padding: '7px 12px', fontSize: 12, fontWeight: 600, background: 'transparent', color: '#9B9788', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 },
   unitBtnActive: { background: '#C4622D', color: '#14140F' },
-  saveBtn: { background: 'transparent', color: '#D9D5C8', border: '1px solid #33312A', padding: '8px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' },
+  saveBtn: { display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', color: '#D9D5C8', border: '1px solid #33312A', padding: '8px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
   addBtn: { display: 'flex', alignItems: 'center', gap: 6, background: '#2B4A31', color: '#D7ECD9', border: '1px solid #3E5B45', padding: '8px 14px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' },
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 },
   kpiCard: { background: '#1E1D18', border: '1px solid #33312A', borderRadius: 8, padding: '14px 16px' },
@@ -365,22 +476,23 @@ const styles = {
   panel: { background: '#1A1915', border: '1px solid #2A2822', borderRadius: 8, padding: 16 },
   panelHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 },
   panelTitle: { fontSize: 14, fontWeight: 700, margin: 0, color: '#F5F2E9' },
+  hint: { fontSize: 11, color: '#7C7969', lineHeight: 1.5 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 12.5 },
   theadRow: { borderBottom: '1px solid #33312A' },
-  th: { textAlign: 'left', padding: '0 8px 8px', color: '#7C7969', fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' },
+  th: { textAlign: 'left', padding: '0 8px 8px', color: '#7C7969', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' },
   tr: { borderBottom: '1px solid #26241E' },
   td: { padding: '8px', verticalAlign: 'middle' },
   matName: { fontWeight: 600, color: '#F5F2E9' },
   matCategory: { fontSize: 10.5, color: '#7C7969', marginTop: 1 },
-  numInput: { width: 70, background: '#111009', border: '1px solid #33312A', borderRadius: 4, padding: '5px 7px', color: '#EDE9DE', fontSize: 12, fontVariantNumeric: 'tabular-nums' },
-  chargeInput: { width: 80, background: 'rgba(196,98,45,0.10)', border: '1px solid #6E4A2E', borderRadius: 4, padding: '5px 7px', color: '#E4A672', fontWeight: 700, fontSize: 12, fontVariantNumeric: 'tabular-nums' },
+  numInput: { width: 68, background: '#111009', border: '1px solid #33312A', borderRadius: 4, padding: '5px 7px', color: '#EDE9DE', fontSize: 12, fontVariantNumeric: 'tabular-nums' },
+  chargeDisplay: { width: 76, padding: '5px 7px', color: '#E4A672', fontWeight: 700, fontSize: 12.5, fontVariantNumeric: 'tabular-nums' },
   iconBtn: { background: 'transparent', border: 'none', color: '#7C7969', cursor: 'pointer', padding: 4, display: 'flex' },
-  chemGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 },
-  chemCard: { border: '1px solid', borderRadius: 6, padding: '10px 12px' },
-  chemTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  chemSymbol: { fontWeight: 700, fontSize: 13, color: '#F5F2E9' },
-  chemValue: { fontSize: 19, fontWeight: 700, color: '#F5F2E9', marginBottom: 2 },
-  chemRange: { fontSize: 10.5, color: '#7C7969' },
+  chemGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: 8 },
+  chemCard: { border: '1px solid', borderRadius: 6, padding: '8px 10px' },
+  chemTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
+  chemSymbol: { fontWeight: 700, fontSize: 12, color: '#F5F2E9' },
+  chemValue: { fontSize: 16, fontWeight: 700, color: '#F5F2E9', marginBottom: 2 },
+  chemRange: { fontSize: 9.5, color: '#7C7969' },
   formStack: { display: 'flex', flexDirection: 'column', gap: 12 },
   fieldLabel: { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11.5, color: '#9B9788', fontWeight: 600 },
   textInput: { background: '#111009', border: '1px solid #33312A', borderRadius: 5, padding: '8px 10px', color: '#EDE9DE', fontSize: 13, fontVariantNumeric: 'tabular-nums' },
@@ -395,11 +507,11 @@ const styles = {
   expenseRow: { display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: '#B8B4A6' },
   expenseTotalRow: { fontWeight: 700, color: '#F5F2E9', fontSize: 13.5, paddingTop: 6, borderTop: '1px solid #2A2822' },
   modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(10,10,7,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 50 },
-  modal: { background: '#1A1915', border: '1px solid #33312A', borderRadius: 10, padding: 20, width: '100%', maxWidth: 440, maxHeight: '88vh', overflowY: 'auto' },
+  modal: { background: '#1A1915', border: '1px solid #33312A', borderRadius: 10, padding: 20, width: '100%', maxWidth: 460, maxHeight: '88vh', overflowY: 'auto' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 15, fontWeight: 700, margin: 0, color: '#F5F2E9' },
   twoCol: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
-  elementGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 },
+  elementGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 },
   elementField: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: '#9B9788', fontWeight: 700 },
   submitBtn: { marginTop: 6, background: '#C4622D', color: '#14140F', border: 'none', borderRadius: 6, padding: '10px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
 };
