@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Alloy Blend & Charge Costing</title>
+<meta name="theme-color" content="#14140F" />
+<meta name="description" content="Inventory, yield-adjusted chemistry, and margin calculator for alloy blending." />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="mobile-web-app-capable" content="yes" />
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/javascript-lp-solver@0.4.24/prod/solver.js"></script>
+
+<style>
+  :root[data-theme="dark"] {
+    --bg: #14140F; --surface: #1A1915; --surface-alt: #1E1D18; --input-bg: #111009;
+    --border: #33312A; --border-soft: #2A2822; --border-faint: #26241E;
+    --text: #EDE9DE; --text-strong: #F5F2E9; --text-secondary: #D9D5C8; --text-muted: #9B9788; --text-faint: #7C7969;
+    --accent: #C4622D; --accent-contrast: #14140F; --icon-muted: #9AA0A6;
+    --success: #8FB89A; --success-border: #3E5B45; --success-bg: rgba(111,158,120,0.08); --success-bg-strong: #2B4A31; --success-text-strong: #D7ECD9;
+    --danger: #D08267; --danger-border: #6E3A2E; --danger-bg: rgba(181,83,61,0.08);
+    --warning: #D98A4A; --warning-strong: #E4A672;
+    --overlay: rgba(10,10,7,0.7);
+  }
+  :root[data-theme="light"] {
+    --bg: #F5F1E8; --surface: #FFFFFF; --surface-alt: #F1EDE3; --input-bg: #FFFFFF;
+    --border: #DEDACD; --border-soft: #E5E1D5; --border-faint: #ECE8DC;
+    --text: #2A2822; --text-strong: #14140F; --text-secondary: #4A4638; --text-muted: #6B6656; --text-faint: #948F80;
+    --accent: #C4622D; --accent-contrast: #FFFFFF; --icon-muted: #6B6656;
+    --success: #2E7D46; --success-border: #A8CDB0; --success-bg: rgba(46,125,70,0.08); --success-bg-strong: #DCEFE0; --success-text-strong: #1F5C34;
+    --danger: #B5533D; --danger-border: #E3B7AC; --danger-bg: rgba(181,83,61,0.08);
+    --warning: #B8631F; --warning-strong: #A6521A;
+    --overlay: rgba(20,18,12,0.45);
+  }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; -webkit-tap-highlight-color: transparent; }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { opacity: 0.4; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  ::selection { background: var(--accent); color: var(--accent-contrast); }
+  #root { min-height: 100vh; }
+
+  @media (max-width: 860px) {
+  }
+  @media (max-width: 520px) {
+    .page-pad { padding: 12px !important; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+    .header-row { flex-direction: column; align-items: flex-start !important; }
+    .header-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  }
+
+  @media print {
+    body, .page-pad { background: #fff !important; color: #111 !important; }
+    .header-controls button { display: none !important; }
+    input { border: none !important; background: transparent !important; color: #111 !important; -webkit-print-color-adjust: exact; }
+    section, .kpi-grid > div { border: 1px solid #ccc !important; background: #fff !important; break-inside: avoid; }
+    * { color: #111 !important; }
+  }
+  .print-letterhead { display: none; }
+  @media print {
+    .print-letterhead {
+      display: block; text-align: left; margin-bottom: 14px; padding-bottom: 10px;
+      border-bottom: 2px solid #111; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+    }
+    .print-letterhead .company-name { font-size: 20px; font-weight: 800; letter-spacing: 0.02em; }
+    .print-letterhead .company-sub { font-size: 10px; color: #555; margin-top: 2px; }
+  }
+  @media print {
+    .no-print, .no-print * { display: none !important; }
+  }
+  .print-materials-used { display: none; }
+  @media print {
+    .print-materials-used {
+      display: block; margin-bottom: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+    }
+    .print-materials-used h2 { font-size: 13px; font-weight: 700; color: #111; margin: 0 0 8px; }
+    .print-materials-used table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .print-materials-used th, .print-materials-used td { border: 1px solid #ccc; padding: 5px 8px; text-align: left; color: #111; }
+    .print-materials-used th { background: #f0f0f0; font-weight: 700; }
+  }
+  .print-chem-compare { display: none; }
+  @media print {
+    .print-chem-compare {
+      display: block; margin-bottom: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+    }
+    .print-chem-compare h2 { font-size: 13px; font-weight: 700; color: #111; margin: 0 0 8px; }
+    .print-chem-compare table { width: 100%; border-collapse: collapse; font-size: 9px; table-layout: fixed; }
+    .print-chem-compare th, .print-chem-compare td { border: 1px solid #ccc; padding: 3px 2px; text-align: center; color: #111; }
+    .print-chem-compare th:first-child, .print-chem-compare td:first-child { text-align: left; width: 90px; }
+    .print-chem-compare th { background: #f0f0f0; font-weight: 700; }
+  }
+  @media print {
+    /* Keep the printed sheet compact: tighter spacing, smaller type, no wasted margin */
+    @page { margin: 10mm; }
+    body, .page-pad { font-size: 11px; }
+    .page-pad { padding: 0 !important; }
+    section { padding: 8px !important; margin-bottom: 8px !important; }
+    .kpi-grid { display: none !important; }
+    h1 { font-size: 15px !important; }
+    p, .kpiSub { font-size: 9px !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<input type="file" id="import-file-input" accept=".csv,.xlsx,.xls" style="display:none" />
+
+<script type="text/plain" id="app-source">
+const { useState } = React;
+
+// ---- Minimal inline icon set (stroke style, currentColor) ----
+const Icon = ({ children, size = 16, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {children}
+  </svg>
+);
+const CalculatorIcon = (p) => <Icon {...p}><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="18"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/></Icon>;
+const DollarIcon = (p) => <Icon {...p}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></Icon>;
+const TrendingUpIcon = (p) => <Icon {...p}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></Icon>;
+const PackageIcon = (p) => <Icon {...p}><path d="M21 8v8a2 2 0 0 1-1 1.73l-6 3.46a2 2 0 0 1-2 0l-6-3.46A2 2 0 0 1 3 16V8"/><path d="M3.27 6.96 12 12l8.73-5.04"/><line x1="12" y1="22" x2="12" y2="12"/></Icon>;
+const CheckIcon = (p) => <Icon {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></Icon>;
+const AlertIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></Icon>;
+const RefreshIcon = (p) => <Icon {...p}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></Icon>;
+const LayersIcon = (p) => <Icon {...p}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></Icon>;
+const PercentIcon = (p) => <Icon {...p}><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></Icon>;
+const PlusIcon = (p) => <Icon {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
+const ScaleIcon = (p) => <Icon {...p}><line x1="12" y1="3" x2="12" y2="21"/><path d="M5 8l-3 6a4 4 0 0 0 8 0z"/><path d="M19 8l-3 6a4 4 0 0 0 8 0z"/><path d="M8 3h8"/></Icon>;
+const XIcon = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Icon>;
+const FileCheckIcon = (p) => <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></Icon>;
+const ReceiptIcon = (p) => <Icon {...p}><path d="M4 2h16v20l-3-2-3 2-3-2-3 2-3-2-1 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/></Icon>;
+const TrashIcon = (p) => <Icon {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></Icon>;
+const BoxIcon = (p) => <Icon {...p}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></Icon>;
+const ShareIcon = (p) => <Icon {...p}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></Icon>;
+const PrinterIcon = (p) => <Icon {...p}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></Icon>;
+const SunIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></Icon>;
+const MoonIcon = (p) => <Icon {...p}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></Icon>;
+const SparklesIcon = (p) => <Icon {...p}><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z"/><path d="M19 15l0.8 2.2L22 18l-2.2 0.8L19 21l-0.8-2.2L16 18l2.2-0.8L19 15z"/></Icon>;
+const LockIcon = (p) => <Icon {...p}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></Icon>;
+const UnlockIcon = (p) => <Icon {...p}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></Icon>;
+const UploadIcon = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></Icon>;
+const BookIcon = (p) => <Icon {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></Icon>;
+
+const ELEMENTS = ['Ni', 'Cr', 'Mo', 'Fe', 'Cu', 'C', 'W', 'Co', 'Mn', 'Ti', 'Al', 'Nb'];
+const COMPANY_NAME = 'Ni Met Recycling FZ LLC';
+const zeroEl = {};
+ELEMENTS.forEach((e) => { zeroEl[e] = 0; });
+
+const initialMaterials = [
+  { id: 'mat-1', name: 'SS 304', category: 'Stainless Steel', elements: { ...zeroEl, Mo: 0.024108, Ni: 8.2, Cr: 17.75, Fe: 72.2, Cu: 0.151, Mn: 0.73 }, availableQtyKg: 0, qtyPerContainerKg: 20500, yieldPercent: 98, purchasePricePerKg: 1.22885, selected: true, lockedQtyKg: null },
+  { id: 'mat-2', name: 'SS 430', category: 'Stainless Steel', elements: { ...zeroEl, Mo: 0.065, Ni: 0.198, Cr: 15.43, Fe: 83.5, Cu: 0.08, Mn: 0.28, Ti: 0.023 }, availableQtyKg: 38848, qtyPerContainerKg: 500, yieldPercent: 98, purchasePricePerKg: 0.50919, selected: true, lockedQtyKg: null },
+  { id: 'mat-3', name: 'SS 201', category: 'Stainless Steel', elements: { ...zeroEl, C: 0.15, Mo: 0.069, Ni: 1.1, Cr: 14.43, Fe: 74.7, Cu: 0.93, Mn: 7.83 }, availableQtyKg: 48775, qtyPerContainerKg: 1000, yieldPercent: 98, purchasePricePerKg: 0.55001, selected: true, lockedQtyKg: null },
+  { id: 'mat-4', name: 'HC Ferro Chrome', category: 'Ferroalloys', elements: { ...zeroEl, C: 4.49, Cr: 29, Mn: 0.55 }, availableQtyKg: 46040, qtyPerContainerKg: 0, yieldPercent: 94, purchasePricePerKg: 0.5389, selected: true, lockedQtyKg: null },
+  { id: 'mat-5', name: 'Shredded SS 300 series', category: 'Stainless Steel', elements: { ...zeroEl, C: 0.0069, Mo: 0.225, Ni: 7.13, Cr: 16.99, Fe: 71.9, Cu: 0.434, Mn: 2.49 }, availableQtyKg: 65000, qtyPerContainerKg: 2000, yieldPercent: 98, purchasePricePerKg: 1.15, selected: true, lockedQtyKg: null },
+];
+
+const defaultDirectory = initialMaterials.map((m) => ({ id: `dir-${m.id}`, name: m.name, category: m.category, elements: m.elements, yieldPercent: m.yieldPercent }));
+
+const emptyElements = { ...zeroEl };
+const STORAGE_KEY = 'alloy-costing-state-v3';
+const DIRECTORY_KEY = 'alloy-grade-directory-v1';
+
+function fmt(n, opts = {}) {
+  return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2, ...opts });
+}
+
+function loadSaved() {
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+  return null;
+}
+function loadDirectory() {
+  try { const raw = localStorage.getItem(DIRECTORY_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+  return defaultDirectory;
+}
+
+function App() {
+  const saved = loadSaved();
+  const [unit, setUnit] = useState(saved?.unit || 'MT');
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('alloy-costing-theme') || 'dark'; } catch (e) { return 'dark'; }
+  });
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    try { localStorage.setItem('alloy-costing-theme', next); } catch (e) {}
+  };
+  // Apply the theme attribute every render (cheap, and keeps this in sync with state)
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', theme);
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) metaTheme.setAttribute('content', theme === 'dark' ? '#14140F' : '#F5F1E8');
+  }
+  const [materials, setMaterials] = useState(saved?.materials || initialMaterials);
+  const [containers, setContainers] = useState(saved?.containers ?? 8);
+  const [directory, setDirectory] = useState(loadDirectory());
+
+  const [target, setTarget] = useState(saved?.target || {
+    gradeName: 'Low Nickel Alloys 04',
+    targetWeightKg: 172000,
+    minSpecs: { ...zeroEl, Cr: 14.5, Fe: 72, Ni: 7.6 },
+    maxSpecs: { ...zeroEl, Cr: 18, Fe: 100, Ni: 8.5, C: 0.5, W: 0.5, Co: 0.22, Mn: 1.5, Ti: 0.02, Nb: 0.02 },
+  });
+
+  const [contract, setContract] = useState(saved?.contract || {
+    customerName: 'Aperam Sourcing SCA',
+    contractNo: '',
+    contactNumber: '',
+    contractQtyMT: 172,
+    loadingDate: '',
+    salesContractPerMT: 1475,
+    freightPerMT: 252,
+    clearancePerMT: 84,
+    financePerMT: 30,
+    operationalPerMT: 50,
+  });
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isDirModalOpen, setIsDirModalOpen] = useState(false);
+  const [newGrade, setNewGrade] = useState({ name: '', category: 'Scrap Metal', availableQty: 0, qtyPerContainer: 0, price: 0, yieldPercent: 96, elements: { ...emptyElements }, saveToDirectory: true });
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [shareFlash, setShareFlash] = useState(false);
+  const [optimizerMsg, setOptimizerMsg] = useState(null);
+  const [importMsg, setImportMsg] = useState(null);
+
+  const persist = (next) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1200);
+    } catch (e) {}
+  };
+  const saveNow = () => persist({ unit, materials, containers, target, contract });
+
+  const persistDirectory = (next) => {
+    setDirectory(next);
+    try { localStorage.setItem(DIRECTORY_KEY, JSON.stringify(next)); } catch (e) {}
+  };
+
+  const weightFactor = unit === 'MT' ? 0.001 : 1;
+  const toDisplayWeight = (kg) => kg * weightFactor;
+  const toKgWeight = (v) => v / weightFactor;
+  const toDisplayPricePerKg = (perKg) => unit === 'MT' ? perKg * 1000 : perKg;
+  const toKgPriceFromDisplay = (v) => unit === 'MT' ? v / 1000 : v;
+
+  const chargeQtyKg = (m) => Number(m.qtyPerContainerKg || 0) * Number(containers || 0);
+
+  const activeMaterials = materials.filter((m) => m.selected);
+  const totalChargedWeightKg = activeMaterials.reduce((s, m) => s + chargeQtyKg(m), 0);
+  const totalRecoveredWeightKg = activeMaterials.reduce((s, m) => s + chargeQtyKg(m) * ((m.yieldPercent || 100) / 100), 0);
+  const totalRecoveredMT = totalRecoveredWeightKg / 1000;
+
+  const calculatedComposition = ELEMENTS.reduce((acc, el) => {
+    if (totalRecoveredWeightKg === 0) { acc[el] = 0; return acc; }
+    const massKg = activeMaterials.reduce((s, m) => {
+      const netKg = chargeQtyKg(m) * ((m.yieldPercent || 100) / 100);
+      return s + netKg * ((m.elements[el] || 0) / 100);
+    }, 0);
+    acc[el] = Number(((massKg / totalRecoveredWeightKg) * 100).toFixed(4));
+    return acc;
+  }, {});
+
+  const rawMaterialCostTotalUSD = activeMaterials.reduce((s, m) => s + chargeQtyKg(m) * Number(m.purchasePricePerKg || 0), 0);
+  const totalChargedMT = totalChargedWeightKg / 1000;
+  // Blend cost, before yield: cost per MT of material actually charged into the container (before yield loss).
+  // This is the figure used in Total Cost / Margin below, per your costing basis.
+  const blendCostPerChargedMT = totalChargedMT > 0 ? rawMaterialCostTotalUSD / totalChargedMT : 0;
+  // Blend cost, after yield: reference only — cost per MT of actual recovered output. Not used in Total Cost below.
+  const blendCostPerMT = totalRecoveredMT > 0 ? rawMaterialCostTotalUSD / totalRecoveredMT : 0;
+
+  const totalCostPerMT =
+    blendCostPerChargedMT +
+    Number(contract.freightPerMT || 0) +
+    Number(contract.clearancePerMT || 0) +
+    Number(contract.financePerMT || 0) +
+    Number(contract.operationalPerMT || 0);
+
+  const grossMarginPerMT = Number(contract.salesContractPerMT || 0) - totalCostPerMT;
+  const grossMarginTotalUSD = grossMarginPerMT * totalRecoveredMT;
+  const grossMarginPercent = contract.salesContractPerMT > 0 ? (grossMarginPerMT / Number(contract.salesContractPerMT)) * 100 : 0;
+
+  const updateMaterial = (id, key, val) => setMaterials((prev) => prev.map((m) => (m.id === id ? { ...m, [key]: val } : m)));
+  const removeMaterial = (id) => setMaterials((prev) => prev.filter((m) => m.id !== id));
+
+  const handleAddNewGradeSubmit = (e) => {
+    e.preventDefault();
+    if (!newGrade.name.trim()) return;
+    const created = {
+      id: `mat-${Date.now()}`, name: newGrade.name.trim(), category: newGrade.category,
+      availableQtyKg: toKgWeight(Number(newGrade.availableQty) || 0),
+      qtyPerContainerKg: toKgWeight(Number(newGrade.qtyPerContainer) || 0),
+      purchasePricePerKg: toKgPriceFromDisplay(Number(newGrade.price) || 0),
+      yieldPercent: Number(newGrade.yieldPercent) || 0, elements: newGrade.elements, selected: true, lockedQtyKg: null,
+    };
+    setMaterials((prev) => [...prev, created]);
+    if (newGrade.saveToDirectory) {
+      const alreadyIn = directory.some((d) => d.name.toLowerCase() === created.name.toLowerCase());
+      if (!alreadyIn) {
+        persistDirectory([...directory, { id: `dir-${created.id}`, name: created.name, category: created.category, elements: created.elements, yieldPercent: created.yieldPercent }]);
+      }
+    }
+    setIsAddModalOpen(false);
+    setNewGrade({ name: '', category: 'Scrap Metal', availableQty: 0, qtyPerContainer: 0, price: 0, yieldPercent: 96, elements: { ...emptyElements }, saveToDirectory: true });
+  };
+
+  const pickFromDirectory = (dirId) => {
+    const d = directory.find((x) => x.id === dirId);
+    if (!d) return;
+    setNewGrade((p) => ({ ...p, name: d.name, category: d.category, elements: { ...d.elements }, yieldPercent: d.yieldPercent, saveToDirectory: false }));
+  };
+
+  const removeDirectoryTemplate = (dirId) => {
+    persistDirectory(directory.filter((d) => d.id !== dirId));
+  };
+
+  // ---- Share / Print ----
+  const buildShareText = () => {
+    const lines = [];
+    lines.push(COMPANY_NAME);
+    lines.push(`BLEND SHEET — ${target.gradeName || 'Untitled'}`);
+    lines.push(`Customer: ${contract.customerName || '-'}   Contract: ${contract.contractNo || '-'}   Contact: ${contract.contactNumber || '-'}`);
+    lines.push(`Loading: ${contract.loadingDate || '-'}   Containers: ${containers}   Contract qty: ${fmt(contract.contractQtyMT)} MT`);
+    lines.push('');
+    lines.push('MATERIALS TO PREPARE:');
+    activeMaterials.forEach((m) => {
+      const qty = toDisplayWeight(chargeQtyKg(m));
+      lines.push(`- ${m.name}: ${fmt(qty)} ${unit} (yield ${m.yieldPercent}%)`);
+    });
+    lines.push('');
+    lines.push(`Total charge: ${fmt(toDisplayWeight(totalChargedWeightKg))} ${unit}`);
+    lines.push(`Expected recovered output: ${fmt(toDisplayWeight(totalRecoveredWeightKg))} ${unit}`);
+    lines.push('');
+    lines.push('BLENDED CHEMISTRY (%):');
+    ELEMENTS.forEach((el) => {
+      if (calculatedComposition[el] > 0 || target.maxSpecs[el] > 0) {
+        lines.push(`  ${el}: ${calculatedComposition[el]}%  (spec ${target.minSpecs[el]}–${target.maxSpecs[el]}%)`);
+      }
+    });
+    lines.push('');
+    lines.push(`Blend cost: $${fmt(blendCostPerMT)}/MT   Total cost: $${fmt(totalCostPerMT)}/MT   Margin: $${fmt(grossMarginPerMT)}/MT`);
+    return lines.join('\n');
+  };
+
+  const shareBlend = async () => {
+    const text = buildShareText();
+    if (navigator.share) {
+      try { await navigator.share({ title: `Blend Sheet — ${target.gradeName || 'Blend'}`, text }); return; } catch (e) {}
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareFlash(true);
+      setTimeout(() => setShareFlash(false), 1500);
+    } catch (e) {}
+  };
+
+  // ---- AI / LP Blend Optimizer ----
+  const toggleLock = (id) => {
+    setMaterials((prev) => prev.map((m) => {
+      if (m.id !== id) return m;
+      if (m.lockedQtyKg != null) return { ...m, lockedQtyKg: null };
+      return { ...m, lockedQtyKg: chargeQtyKg(m) };
+    }));
+  };
+
+  const runOptimizer = () => {
+    setOptimizerMsg(null);
+    if (typeof solver === 'undefined') {
+      setOptimizerMsg({ type: 'error', text: 'Optimizer library did not load — check your internet connection and reload the page.' });
+      return;
+    }
+    const R = target.targetWeightKg / 1000; // target recovered, in MT
+    if (!R || R <= 0) {
+      setOptimizerMsg({ type: 'error', text: 'Set a target recovered output (MT) first.' });
+      return;
+    }
+    const candidates = materials.filter((m) => m.selected);
+    if (candidates.length === 0) {
+      setOptimizerMsg({ type: 'error', text: 'Select at least one material to optimize over.' });
+      return;
+    }
+
+    const model = { optimize: 'cost', opType: 'min', constraints: {}, variables: {} };
+    model.constraints['recovered'] = { equal: R };
+    ELEMENTS.forEach((el) => {
+      const min = target.minSpecs[el] || 0, max = target.maxSpecs[el] || 0;
+      if (min === 0 && max === 0) return;
+      model.constraints['el_' + el] = { min: min * R, max: max * R };
+    });
+
+    candidates.forEach((m) => {
+      const yieldFrac = (m.yieldPercent || 100) / 100;
+      const priceMT = Number(m.purchasePricePerKg || 0) * 1000; // cost per MT of raw charged material
+      const v = { cost: priceMT, recovered: yieldFrac };
+      ELEMENTS.forEach((el) => {
+        const min = target.minSpecs[el] || 0, max = target.maxSpecs[el] || 0;
+        if (min === 0 && max === 0) return;
+        v['el_' + el] = yieldFrac * ((m.elements[el] || 0) / 100);
+      });
+      if (m.lockedQtyKg != null) {
+        model.constraints['lock_' + m.id] = { equal: m.lockedQtyKg / 1000 };
+        v['lock_' + m.id] = 1;
+      } else {
+        const availMT = m.availableQtyKg > 0 ? m.availableQtyKg / 1000 : 1e9;
+        model.constraints['avail_' + m.id] = { max: availMT };
+        v['avail_' + m.id] = 1;
+      }
+      model.variables[m.id] = v;
+    });
+
+    let results;
+    try { results = solver.Solve(model); } catch (err) {
+      setOptimizerMsg({ type: 'error', text: 'Optimizer failed to run: ' + err.message });
+      return;
+    }
+
+    if (!results || !results.feasible) {
+      setOptimizerMsg({ type: 'error', text: 'No feasible blend found for this target with current stock and spec limits. Try loosening the spec, raising available quantities, or lowering the target weight.' });
+      return;
+    }
+
+    setMaterials((prev) => prev.map((m) => {
+      if (!m.selected) return m;
+      const xMT = results[m.id] || 0;
+      const xKg = xMT * 1000;
+      const perContainer = containers > 0 ? xKg / containers : xKg;
+      return { ...m, qtyPerContainerKg: perContainer };
+    }));
+    if (containers <= 0) setContainers(1);
+
+    setOptimizerMsg({ type: 'success', text: `Optimized blend cost: $${fmt(results.result / R)}/MT (total raw material cost $${fmt(results.result)} for ${fmt(R)} MT recovered). Quantities updated below.` });
+  };
+
+  // ---- Excel/CSV inventory import ----
+  const findCol = (row, candidates) => {
+    const keys = Object.keys(row);
+    for (const c of candidates) {
+      const hit = keys.find((k) => k.toLowerCase().trim() === c);
+      if (hit) return hit;
+    }
+    for (const c of candidates) {
+      const hit = keys.find((k) => k.toLowerCase().trim().includes(c));
+      if (hit) return hit;
+    }
+    return null;
+  };
+
+  const handleImportFile = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        if (!rows.length) { setImportMsg({ type: 'error', text: 'No rows found in that file.' }); return; }
+
+        const nameCol = findCol(rows[0], ['material name', 'material', 'name', 'grade']);
+        const categoryCol = findCol(rows[0], ['category']);
+        const qtyCol = findCol(rows[0], ['available (mt)', 'available', 'qty', 'quantity']);
+        const priceCol = findCol(rows[0], ['price (usd/mt)', 'price', 'purchase price', 'avg price']);
+        const yieldCol = findCol(rows[0], ['yield %', 'yield']);
+        const elementCols = {};
+        ELEMENTS.forEach((el) => {
+          const hit = findCol(rows[0], [el.toLowerCase()]);
+          if (hit) elementCols[el] = hit;
+        });
+
+        if (!nameCol) { setImportMsg({ type: 'error', text: 'Could not find a "Material Name" column in the file.' }); return; }
+
+        let updated = 0, created = 0;
+        const newDirectoryEntries = [];
+        setMaterials((prev) => {
+          const next = prev.map((m) => ({ ...m }));
+          rows.forEach((row) => {
+            const rowName = String(row[nameCol] || '').trim();
+            if (!rowName) return;
+            const match = next.find((m) => m.name.trim().toLowerCase() === rowName.toLowerCase());
+
+            if (match) {
+              if (qtyCol && row[qtyCol] !== '') match.availableQtyKg = Number(row[qtyCol]) * 1000;
+              if (priceCol && row[priceCol] !== '') match.purchasePricePerKg = Number(row[priceCol]) / 1000;
+              if (yieldCol && row[yieldCol] !== '') match.yieldPercent = Number(row[yieldCol]);
+              Object.keys(elementCols).forEach((el) => {
+                const v = row[elementCols[el]];
+                if (v !== '') match.elements = { ...match.elements, [el]: Number(v) };
+              });
+              updated++;
+            } else {
+              // No existing material with this name — create a new one if we have at least chemistry or price/qty
+              const elements = { ...zeroEl };
+              Object.keys(elementCols).forEach((el) => {
+                const v = row[elementCols[el]];
+                if (v !== '') elements[el] = Number(v);
+              });
+              const newMat = {
+                id: `mat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                name: rowName,
+                category: categoryCol && row[categoryCol] !== '' ? String(row[categoryCol]) : 'Imported',
+                elements,
+                availableQtyKg: qtyCol && row[qtyCol] !== '' ? Number(row[qtyCol]) * 1000 : 0,
+                qtyPerContainerKg: 0,
+                yieldPercent: yieldCol && row[yieldCol] !== '' ? Number(row[yieldCol]) : 96,
+                purchasePricePerKg: priceCol && row[priceCol] !== '' ? Number(row[priceCol]) / 1000 : 0,
+                selected: false,
+                lockedQtyKg: null,
+              };
+              next.push(newMat);
+              newDirectoryEntries.push({ id: `dir-${newMat.id}`, name: newMat.name, category: newMat.category, elements: newMat.elements, yieldPercent: newMat.yieldPercent });
+              created++;
+            }
+          });
+          return next;
+        });
+
+        if (newDirectoryEntries.length > 0) {
+          setDirectory((prevDir) => {
+            const merged = [...prevDir];
+            newDirectoryEntries.forEach((d) => {
+              if (!merged.some((x) => x.name.toLowerCase() === d.name.toLowerCase())) merged.push(d);
+            });
+            try { localStorage.setItem(DIRECTORY_KEY, JSON.stringify(merged)); } catch (e) {}
+            return merged;
+          });
+        }
+
+        setImportMsg({
+          type: (updated + created) > 0 ? 'success' : 'error',
+          text: `Updated ${updated} existing material(s), created ${created} new one(s) (added unselected — tick them in to include in the blend). Assumes quantities in MT, prices in USD/MT.`,
+        });
+      } catch (err) {
+        setImportMsg({ type: 'error', text: 'Could not read that file: ' + err.message });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // expose import handler for the hidden file input (must run every render, before return)
+  window.__handleImportFile = handleImportFile;
+
+  return (
+    <div className="page-pad" style={styles.page}>
+      <div className="print-letterhead">
+        <div className="company-name">{COMPANY_NAME}</div>
+        <div className="company-sub">Blend Sheet — {target.gradeName || 'Untitled'} · Generated {new Date().toLocaleDateString()}</div>
+      </div>
+      <div className="header-row" style={styles.header}>
+        <div style={styles.brandRow}>
+          <div style={styles.brandMark}><CalculatorIcon size={20} color="var(--bg)" /></div>
+          <div>
+            <div style={styles.companyLabel}>{COMPANY_NAME}</div>
+            <h1 style={styles.title}>Alloy Blend &amp; Charge Costing</h1>
+            <p style={styles.subtitle}>Container-based blend, AI-assisted optimization, and margin in USD/MT.</p>
+          </div>
+        </div>
+        <div className="header-controls" style={styles.headerControls}>
+          <div style={styles.unitToggle}>
+            <button onClick={() => setUnit('MT')} style={{ ...styles.unitBtn, ...(unit === 'MT' ? styles.unitBtnActive : {}) }}><ScaleIcon size={13} /> MT</button>
+            <button onClick={() => setUnit('kg')} style={{ ...styles.unitBtn, ...(unit === 'kg' ? styles.unitBtnActive : {}) }}><ScaleIcon size={13} /> kg</button>
+          </div>
+          <button onClick={toggleTheme} style={styles.saveBtn} title="Toggle dark / light mode">
+            {theme === 'dark' ? <SunIcon size={14} /> : <MoonIcon size={14} />}
+          </button>
+          <button onClick={saveNow} style={styles.saveBtn}>{savedFlash ? 'Saved' : 'Save'}</button>
+          <button onClick={shareBlend} style={styles.saveBtn}><ShareIcon size={14} /> {shareFlash ? 'Copied' : 'Share'}</button>
+          <button onClick={() => window.print()} style={styles.saveBtn}><PrinterIcon size={14} /> Print/PDF</button>
+          <button onClick={() => setIsDirModalOpen(true)} style={styles.saveBtn}><BookIcon size={14} /> Directory</button>
+          <button onClick={() => setIsAddModalOpen(true)} style={styles.addBtn}><PlusIcon size={15} /> Add grade</button>
+        </div>
+      </div>
+
+      <div className="kpi-grid" style={styles.kpiGrid}>
+        <div style={styles.kpiCard}>
+          <div style={styles.kpiLabel}><PackageIcon size={13} /> Recovered output</div>
+          <div style={styles.kpiValue}>{fmt(toDisplayWeight(totalRecoveredWeightKg))} <span style={styles.kpiUnit}>{unit}</span></div>
+          <div style={styles.kpiSub}>Charged {fmt(toDisplayWeight(totalChargedWeightKg))} {unit} · {fmt(containers, {maximumFractionDigits:0})} containers</div>
+        </div>
+        <div style={styles.kpiCard}>
+          <div style={styles.kpiLabel}><DollarIcon size={13} /> Blend cost / MT</div>
+          <div style={{ ...styles.kpiValue, color: 'var(--warning)' }}>${fmt(blendCostPerMT)}</div>
+          <div style={styles.kpiSub}>Total cost incl. overheads: ${fmt(totalCostPerMT)}/MT</div>
+        </div>
+        <div style={styles.kpiCard}>
+          <div style={styles.kpiLabel}><TrendingUpIcon size={13} /> Sales contract</div>
+          <div style={{ ...styles.kpiValue, color: 'var(--success)' }}>${fmt(contract.salesContractPerMT)}<span style={styles.kpiUnit}>/MT</span></div>
+          <div style={styles.kpiSub}>{contract.customerName || 'No customer set'}</div>
+        </div>
+        <div style={{ ...styles.kpiCard, borderColor: grossMarginPerMT >= 0 ? 'var(--success-border)' : 'var(--danger-border)', background: grossMarginPerMT >= 0 ? 'var(--success-bg)' : 'var(--danger-bg)' }}>
+          <div style={styles.kpiLabel}><PercentIcon size={13} /> Margin</div>
+          <div style={{ ...styles.kpiValue, color: grossMarginPerMT >= 0 ? 'var(--success)' : 'var(--danger)' }}>${fmt(grossMarginPerMT)}<span style={styles.kpiUnit}>/MT</span></div>
+          <div style={{ ...styles.kpiSub, color: grossMarginPerMT >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmt(grossMarginPercent)}% · ${fmt(grossMarginTotalUSD)} total</div>
+        </div>
+      </div>
+
+      <div style={styles.stack}>
+        <section style={styles.panel} className="no-print">
+          <div style={styles.panelHeader}><RefreshIcon size={16} color="var(--success)" /><h2 style={styles.panelTitle}>Blended chemistry vs. contract spec</h2></div>
+          <div style={styles.chemGrid}>
+            {ELEMENTS.map((el) => {
+              const actual = calculatedComposition[el];
+              const min = target.minSpecs[el], max = target.maxSpecs[el];
+              const hasSpec = !(min === 0 && max === 0);
+              const compliant = !hasSpec || (actual >= min && actual <= max);
+              return (
+                <div key={el} style={{ ...styles.chemCard, borderColor: compliant ? 'var(--border)' : 'var(--danger-border)', background: compliant ? 'var(--surface-alt)' : 'var(--danger-bg)', opacity: hasSpec ? 1 : 0.75 }}>
+                  <div style={styles.chemTop}><span style={styles.chemSymbol}>{el}</span>{!hasSpec ? null : compliant ? <CheckIcon size={14} color="var(--success)" /> : <AlertIcon size={14} color="var(--danger)" />}</div>
+                  <div style={styles.chemValue}>{actual}%</div>
+                  <div style={styles.chemRange}>{hasSpec ? `${min}–${max}%` : 'No spec set'}</div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <div className="print-chem-compare">
+          <h2>Blend Chemistry vs. Customer Requirement</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Element</th>
+                {ELEMENTS.map((el) => <th key={el}>{el}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Blend %</td>
+                {ELEMENTS.map((el) => <td key={el}>{calculatedComposition[el]}</td>)}
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Customer Min %</td>
+                {ELEMENTS.map((el) => <td key={el}>{target.minSpecs[el] === 0 && target.maxSpecs[el] === 0 ? '—' : target.minSpecs[el]}</td>)}
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Customer Max %</td>
+                {ELEMENTS.map((el) => <td key={el}>{target.minSpecs[el] === 0 && target.maxSpecs[el] === 0 ? '—' : target.maxSpecs[el]}</td>)}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <section style={styles.panel}>
+          <div style={styles.panelHeader}><FileCheckIcon size={16} color="var(--warning)" /><h2 style={styles.panelTitle}>Customer &amp; contract</h2></div>
+          <div style={styles.formStack}>
+            <label style={styles.fieldLabel}>Customer name
+              <input type="text" value={contract.customerName} onChange={(e) => setContract((p) => ({ ...p, customerName: e.target.value }))} style={styles.textInput} />
+            </label>
+            <label style={styles.fieldLabel}>Contract No.
+              <input type="text" value={contract.contractNo} onChange={(e) => setContract((p) => ({ ...p, contractNo: e.target.value }))} style={styles.textInput} />
+            </label>
+            <label style={styles.fieldLabel}>Contact number
+              <input type="text" value={contract.contactNumber} onChange={(e) => setContract((p) => ({ ...p, contactNumber: e.target.value }))} style={styles.textInput} />
+            </label>
+            <label style={styles.fieldLabel}>Contract quantity (MT)
+              <input type="number" value={contract.contractQtyMT} onChange={(e) => setContract((p) => ({ ...p, contractQtyMT: parseFloat(e.target.value) || 0 }))} style={styles.textInput} />
+            </label>
+            <label style={styles.fieldLabel}>Loading date
+              <input type="date" value={contract.loadingDate} onChange={(e) => setContract((p) => ({ ...p, loadingDate: e.target.value }))} style={styles.textInput} />
+            </label>
+            <label style={styles.fieldLabel}>Grade / specification name
+              <input type="text" value={target.gradeName} onChange={(e) => setTarget((p) => ({ ...p, gradeName: e.target.value }))} style={styles.textInput} />
+            </label>
+            <div style={styles.hint}>Average per container: {fmt(toDisplayWeight(containers > 0 ? totalChargedWeightKg / containers : 0))} {unit}</div>
+
+            <div style={styles.specTableWrap}>
+              <div style={styles.specTableTitle}>Min / max spec limits (%)</div>
+              <table style={styles.specTable}>
+                <thead><tr><th style={styles.specTh}>El.</th><th style={styles.specTh}>Min</th><th style={styles.specTh}>Max</th></tr></thead>
+                <tbody>
+                  {ELEMENTS.map((el) => (
+                    <tr key={el}>
+                      <td style={styles.specTdLabel}>{el}</td>
+                      <td style={styles.specTd}><input type="number" step="0.01" value={target.minSpecs[el]} onChange={(e) => setTarget((p) => ({ ...p, minSpecs: { ...p.minSpecs, [el]: parseFloat(e.target.value) || 0 } }))} style={styles.specInput} /></td>
+                      <td style={styles.specTd}><input type="number" step="0.01" value={target.maxSpecs[el]} onChange={(e) => setTarget((p) => ({ ...p, maxSpecs: { ...p.maxSpecs, [el]: parseFloat(e.target.value) || 0 } }))} style={styles.specInput} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section style={styles.panel} className="no-print">
+          <div style={styles.panelHeader}><SparklesIcon size={16} color="var(--accent)" /><h2 style={styles.panelTitle}>AI blend optimizer</h2></div>
+          <div style={styles.formStack}>
+            <div style={styles.twoCol}>
+              <label style={styles.fieldLabel}>Number of containers
+                <input type="number" value={containers} onChange={(e) => setContainers(parseFloat(e.target.value) || 0)} style={styles.textInput} />
+              </label>
+              <label style={styles.fieldLabel}>Target recovered output ({unit})
+                <input type="number" value={Number(toDisplayWeight(target.targetWeightKg).toFixed(2))} onChange={(e) => setTarget((p) => ({ ...p, targetWeightKg: toKgWeight(parseFloat(e.target.value) || 0) }))} style={styles.textInput} />
+              </label>
+            </div>
+            <div style={styles.hint}>Solves for the lowest-cost mix of your selected materials that hits the target output while staying inside every min/max spec limit above. Lock a material (padlock icon in the table below) to fix its quantity and let the optimizer solve around it.</div>
+            <button onClick={runOptimizer} style={styles.optimizeBtn}><SparklesIcon size={15} /> Run optimizer</button>
+            {optimizerMsg && (
+              <div style={{ ...styles.msgBox, borderColor: optimizerMsg.type === 'error' ? 'var(--danger-border)' : 'var(--success-border)', background: optimizerMsg.type === 'error' ? 'var(--danger-bg)' : 'var(--success-bg)', color: optimizerMsg.type === 'error' ? 'var(--danger)' : 'var(--success)' }}>
+                {optimizerMsg.text}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section style={styles.panel} className="no-print">
+          <div style={styles.panelHeader}>
+            <LayersIcon size={16} color="var(--accent)" />
+            <h2 style={styles.panelTitle}>Stock inventory &amp; blend allocation</h2>
+            <div style={{ marginLeft: 'auto' }}>
+              <button onClick={() => document.getElementById('import-file-input').click()} style={styles.smallBtn}><UploadIcon size={13} /> Import inventory</button>
+            </div>
+          </div>
+          {importMsg && (
+            <div style={{ ...styles.msgBox, marginBottom: 10, borderColor: importMsg.type === 'error' ? 'var(--danger-border)' : 'var(--success-border)', background: importMsg.type === 'error' ? 'var(--danger-bg)' : 'var(--success-bg)', color: importMsg.type === 'error' ? 'var(--danger)' : 'var(--success)' }}>
+              {importMsg.text}
+            </div>
+          )}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={styles.table}>
+              <thead><tr style={styles.theadRow}>
+                <th style={{ ...styles.th, width: 34 }}></th>
+                <th style={styles.th}>Material</th>
+                <th style={styles.th}>Available ({unit})</th>
+                <th style={styles.th}>Per container ({unit})</th>
+                <th style={styles.th}>Yield %</th>
+                <th style={styles.th}>Price ($/{unit})</th>
+                <th style={styles.th}>Charge ({unit})</th>
+                {ELEMENTS.map((el) => <th key={el} style={{ ...styles.th, textAlign: 'center' }}>{el}</th>)}
+                <th style={{ ...styles.th, width: 30 }}></th>
+                <th style={{ ...styles.th, width: 34 }}></th>
+              </tr></thead>
+              <tbody>
+                {materials.map((mat) => (
+                  <tr key={mat.id} style={mat.selected ? styles.tr : { ...styles.tr, opacity: 0.4 }}>
+                    <td style={styles.td}><input type="checkbox" checked={mat.selected} onChange={(e) => updateMaterial(mat.id, 'selected', e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--accent)' }} /></td>
+                    <td style={styles.td}><div style={styles.matName}>{mat.name}</div><div style={styles.matCategory}>{mat.category}</div></td>
+                    <td style={styles.td}><input type="number" value={Number(toDisplayWeight(mat.availableQtyKg).toFixed(2))} onChange={(e) => updateMaterial(mat.id, 'availableQtyKg', toKgWeight(parseFloat(e.target.value) || 0))} style={styles.numInput} /></td>
+                    <td style={styles.td}><input type="number" value={Number(toDisplayWeight(mat.qtyPerContainerKg).toFixed(3))} onChange={(e) => updateMaterial(mat.id, 'qtyPerContainerKg', toKgWeight(parseFloat(e.target.value) || 0))} style={styles.numInput} /></td>
+                    <td style={styles.td}><input type="number" step="0.1" value={mat.yieldPercent} onChange={(e) => updateMaterial(mat.id, 'yieldPercent', parseFloat(e.target.value) || 0)} style={{ ...styles.numInput, width: 56 }} /></td>
+                    <td style={styles.td}><input type="number" step="0.001" value={Number(toDisplayPricePerKg(mat.purchasePricePerKg).toFixed(4))} onChange={(e) => updateMaterial(mat.id, 'purchasePricePerKg', toKgPriceFromDisplay(parseFloat(e.target.value) || 0))} style={{ ...styles.numInput, color: 'var(--warning)' }} /></td>
+                    <td style={styles.td}><div style={styles.chargeDisplay}>{fmt(toDisplayWeight(chargeQtyKg(mat)))}</div></td>
+                    {ELEMENTS.map((el) => (
+                      <td style={styles.td} key={el}>
+                        <input
+                          type="number" step="0.01" value={mat.elements[el] || 0}
+                          onChange={(e) => updateMaterial(mat.id, 'elements', { ...mat.elements, [el]: parseFloat(e.target.value) || 0 })}
+                          style={styles.chemColInput}
+                        />
+                      </td>
+                    ))}
+                    <td style={styles.td}>
+                      <button onClick={() => toggleLock(mat.id)} style={{ ...styles.iconBtn, color: mat.lockedQtyKg != null ? 'var(--accent)' : 'var(--text-faint)' }} title={mat.lockedQtyKg != null ? 'Locked for optimizer — click to unlock' : 'Lock quantity for optimizer'}>
+                        {mat.lockedQtyKg != null ? <LockIcon size={14} /> : <UnlockIcon size={14} />}
+                      </button>
+                    </td>
+                    <td style={styles.td}><button onClick={() => removeMaterial(mat.id)} style={styles.iconBtn} title="Remove grade"><TrashIcon size={14} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div className="print-materials-used">
+          <h2>Materials Used</h2>
+          <table>
+            <thead><tr><th>Material</th><th>Charge ({unit})</th><th>Yield %</th><th>Price ($/{unit})</th></tr></thead>
+            <tbody>
+              {activeMaterials.map((mat) => (
+                <tr key={mat.id}>
+                  <td>{mat.name}</td>
+                  <td>{fmt(toDisplayWeight(chargeQtyKg(mat)))}</td>
+                  <td>{mat.yieldPercent}%</td>
+                  <td>${fmt(toDisplayPricePerKg(mat.purchasePricePerKg))}</td>
+                </tr>
+              ))}
+              <tr><td colSpan="1" style={{ fontWeight: 700 }}>Total charged</td><td style={{ fontWeight: 700 }}>{fmt(toDisplayWeight(totalChargedWeightKg))} {unit}</td><td colSpan="2"></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <section style={styles.panel}>
+          <div style={styles.panelHeader}><ReceiptIcon size={16} color="var(--icon-muted)" /><h2 style={styles.panelTitle}>Cost &amp; margin (USD/MT)</h2></div>
+          <div style={styles.formStack}>
+            <label style={styles.fieldLabel}>Sales contract price ($/MT)
+              <input type="number" step="0.01" value={contract.salesContractPerMT} onChange={(e) => setContract((p) => ({ ...p, salesContractPerMT: parseFloat(e.target.value) || 0 }))} style={{ ...styles.textInput, color: 'var(--success)', fontWeight: 700 }} />
+            </label>
+            <label style={styles.fieldLabel}>Freight ($/MT)
+              <input type="number" step="0.01" value={contract.freightPerMT} onChange={(e) => setContract((p) => ({ ...p, freightPerMT: parseFloat(e.target.value) || 0 }))} style={styles.textInput} />
+            </label>
+            <label style={styles.fieldLabel}>Clearance cost ($/MT)
+              <input type="number" step="0.01" value={contract.clearancePerMT} onChange={(e) => setContract((p) => ({ ...p, clearancePerMT: parseFloat(e.target.value) || 0 }))} style={styles.textInput} />
+            </label>
+            <label style={styles.fieldLabel}>Finance cost ($/MT)
+              <input type="number" step="0.01" value={contract.financePerMT} onChange={(e) => setContract((p) => ({ ...p, financePerMT: parseFloat(e.target.value) || 0 }))} style={styles.textInput} />
+            </label>
+            <label style={styles.fieldLabel}>Operational cost ($/MT)
+              <input type="number" step="0.01" value={contract.operationalPerMT} onChange={(e) => setContract((p) => ({ ...p, operationalPerMT: parseFloat(e.target.value) || 0 }))} style={styles.textInput} />
+            </label>
+
+            <div style={styles.divider} />
+            <div style={styles.expenseRow}><span>Blend cost, before yield</span><span>${fmt(blendCostPerChargedMT)}/MT</span></div>
+            <div style={styles.expenseRow}><span title="Reference only — not used in Total Cost above">Blend cost, after yield <span style={styles.provisionTag}>reference</span></span><span>${fmt(blendCostPerMT)}/MT</span></div>
+            <div style={styles.expenseRow}><span>Freight</span><span>${fmt(contract.freightPerMT)}/MT</span></div>
+            <div style={styles.expenseRow}><span>Clearance</span><span>${fmt(contract.clearancePerMT)}/MT</span></div>
+            <div style={styles.expenseRow}><span>Finance</span><span>${fmt(contract.financePerMT)}/MT</span></div>
+            <div style={styles.expenseRow}><span>Operational</span><span>${fmt(contract.operationalPerMT)}/MT</span></div>
+            <div style={{ ...styles.expenseRow, ...styles.expenseTotalRow }}><span>Total cost</span><span>${fmt(totalCostPerMT)}/MT</span></div>
+            <div style={{ ...styles.expenseRow, ...styles.expenseTotalRow, color: grossMarginPerMT >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+              <span>Margin</span><span>${fmt(grossMarginPerMT)}/MT</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {isAddModalOpen && (
+        <div style={styles.modalOverlay} onClick={() => setIsAddModalOpen(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}><h3 style={styles.modalTitle}>Add material grade</h3><button onClick={() => setIsAddModalOpen(false)} style={styles.iconBtn}><XIcon size={16} /></button></div>
+            {directory.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={styles.specTableTitle}>Quick-pick from your grade directory</div>
+                <select onChange={(e) => e.target.value && pickFromDirectory(e.target.value)} style={styles.textInput} defaultValue="">
+                  <option value="">— choose a saved grade —</option>
+                  {directory.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.category})</option>)}
+                </select>
+              </div>
+            )}
+            <form onSubmit={handleAddNewGradeSubmit} style={styles.formStack}>
+              <label style={styles.fieldLabel}>Grade name<input type="text" required value={newGrade.name} onChange={(e) => setNewGrade((p) => ({ ...p, name: e.target.value }))} style={styles.textInput} placeholder="e.g. Monel 400 turnings" /></label>
+              <label style={styles.fieldLabel}>Category<input type="text" value={newGrade.category} onChange={(e) => setNewGrade((p) => ({ ...p, category: e.target.value }))} style={styles.textInput} /></label>
+              <div style={styles.twoCol}>
+                <label style={styles.fieldLabel}>Available ({unit})<input type="number" value={newGrade.availableQty} onChange={(e) => setNewGrade((p) => ({ ...p, availableQty: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
+                <label style={styles.fieldLabel}>Per container ({unit})<input type="number" value={newGrade.qtyPerContainer} onChange={(e) => setNewGrade((p) => ({ ...p, qtyPerContainer: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
+              </div>
+              <div style={styles.twoCol}>
+                <label style={styles.fieldLabel}>Price ($/{unit})<input type="number" step="0.001" value={newGrade.price} onChange={(e) => setNewGrade((p) => ({ ...p, price: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
+                <label style={styles.fieldLabel}>Yield %<input type="number" step="0.1" value={newGrade.yieldPercent} onChange={(e) => setNewGrade((p) => ({ ...p, yieldPercent: parseFloat(e.target.value) || 0 }))} style={styles.textInput} /></label>
+              </div>
+              <div style={styles.specTableTitle}>Elemental composition (%)</div>
+              <div style={styles.elementGrid}>
+                {ELEMENTS.map((el) => (
+                  <label key={el} style={styles.elementField}>{el}
+                    <input type="number" step="0.01" value={newGrade.elements[el]} onChange={(e) => setNewGrade((p) => ({ ...p, elements: { ...p.elements, [el]: parseFloat(e.target.value) || 0 } }))} style={styles.specInput} />
+                  </label>
+                ))}
+              </div>
+              <label style={{ ...styles.fieldLabel, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <input type="checkbox" checked={newGrade.saveToDirectory} onChange={(e) => setNewGrade((p) => ({ ...p, saveToDirectory: e.target.checked }))} style={{ width: 15, height: 15, accentColor: 'var(--accent)' }} />
+                Save this grade to my directory for future reuse
+              </label>
+              <button type="submit" style={styles.submitBtn}>Add to inventory</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isDirModalOpen && (
+        <div style={styles.modalOverlay} onClick={() => setIsDirModalOpen(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}><h3 style={styles.modalTitle}>Grade directory</h3><button onClick={() => setIsDirModalOpen(false)} style={styles.iconBtn}><XIcon size={16} /></button></div>
+            <div style={styles.hint}>Reusable grade definitions (chemistry &amp; yield). Pick "Add grade" then quick-pick to use one in a blend without retyping its chemistry.</div>
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}>
+              {directory.map((d) => (
+                <div key={d.id} style={styles.dirRow}>
+                  <div>
+                    <div style={styles.matName}>{d.name}</div>
+                    <div style={styles.matCategory}>{d.category} · yield {d.yieldPercent}%</div>
+                  </div>
+                  <button onClick={() => removeDirectoryTemplate(d.id)} style={styles.iconBtn} title="Remove from directory"><TrashIcon size={14} /></button>
+                </div>
+              ))}
+              {directory.length === 0 && <div style={styles.hint}>No saved grades yet — add a grade with "Save to directory" checked.</div>}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+document.getElementById('import-file-input').addEventListener('change', function (e) {
+  if (e.target.files && e.target.files[0] && window.__handleImportFile) {
+    window.__handleImportFile(e.target.files[0]);
+  }
+  e.target.value = '';
+});
+
+const styles = {
+  page: { minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', padding: '20px', fontVariantNumeric: 'tabular-nums' },
+  header: { display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, paddingBottom: 18, marginBottom: 20, borderBottom: '1px solid var(--border)' },
+  brandRow: { display: 'flex', alignItems: 'center', gap: 12 },
+  brandMark: { width: 38, height: 38, borderRadius: 6, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  companyLabel: { fontSize: 10.5, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 },
+  title: { fontSize: 19, fontWeight: 700, margin: 0, color: 'var(--text-strong)', letterSpacing: '-0.01em' },
+  subtitle: { fontSize: 12.5, color: 'var(--text-muted)', margin: '3px 0 0' },
+  headerControls: { display: 'flex', alignItems: 'center', gap: 8 },
+  unitToggle: { display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' },
+  unitBtn: { padding: '7px 12px', fontSize: 12, fontWeight: 600, background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 },
+  unitBtnActive: { background: 'var(--accent)', color: 'var(--bg)' },
+  saveBtn: { display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '8px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
+  addBtn: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--success-bg-strong)', color: 'var(--success-text-strong)', border: '1px solid var(--success-border)', padding: '8px 14px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
+  smallBtn: { display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', padding: '5px 10px', borderRadius: 5, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
+  optimizeBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 6, padding: '10px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+  msgBox: { border: '1px solid', borderRadius: 6, padding: '8px 10px', fontSize: 12, lineHeight: 1.5 },
+  kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 },
+  kpiCard: { background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px' },
+  kpiLabel: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 },
+  kpiValue: { fontSize: 22, fontWeight: 700, color: 'var(--text-strong)' },
+  kpiUnit: { fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' },
+  kpiSub: { fontSize: 11, color: 'var(--text-faint)', marginTop: 4 },
+  stack: { display: 'flex', flexDirection: 'column', gap: 18 },
+  panel: { background: 'var(--surface)', border: '1px solid var(--border-soft)', borderRadius: 8, padding: 16 },
+  panelHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 },
+  panelTitle: { fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-strong)' },
+  hint: { fontSize: 11, color: 'var(--text-faint)', lineHeight: 1.5 },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 12.5 },
+  theadRow: { borderBottom: '1px solid var(--border)' },
+  th: { textAlign: 'left', padding: '0 8px 8px', color: 'var(--text-faint)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' },
+  tr: { borderBottom: '1px solid var(--border-faint)' },
+  td: { padding: '8px', verticalAlign: 'middle' },
+  matName: { fontWeight: 600, color: 'var(--text-strong)' },
+  matCategory: { fontSize: 10.5, color: 'var(--text-faint)', marginTop: 1 },
+  chemColInput: { width: 46, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 3px', color: 'var(--text)', fontSize: 11, textAlign: 'center' },
+  numInput: { width: 68, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 7px', color: 'var(--text)', fontSize: 12, fontVariantNumeric: 'tabular-nums' },
+  chargeDisplay: { width: 76, padding: '5px 7px', color: 'var(--warning-strong)', fontWeight: 700, fontSize: 12.5, fontVariantNumeric: 'tabular-nums' },
+  iconBtn: { background: 'transparent', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', padding: 4, display: 'flex' },
+  chemGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: 8 },
+  chemCard: { border: '1px solid', borderRadius: 6, padding: '8px 10px' },
+  chemTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
+  chemSymbol: { fontWeight: 700, fontSize: 12, color: 'var(--text-strong)' },
+  chemValue: { fontSize: 16, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 2 },
+  chemRange: { fontSize: 9.5, color: 'var(--text-faint)' },
+  formStack: { display: 'flex', flexDirection: 'column', gap: 12 },
+  fieldLabel: { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600 },
+  textInput: { background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 5, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontVariantNumeric: 'tabular-nums' },
+  specTableWrap: { marginTop: 4 },
+  specTableTitle: { fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 },
+  specTable: { width: '100%', borderCollapse: 'collapse' },
+  specTh: { fontSize: 10, color: 'var(--text-faint)', textAlign: 'left', paddingBottom: 6, fontWeight: 600 },
+  specTdLabel: { fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', padding: '4px 4px 4px 0' },
+  specTd: { padding: '4px' },
+  specInput: { width: 56, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 6px', color: 'var(--text)', fontSize: 12 },
+  divider: { height: 1, background: 'var(--border-soft)', margin: '4px 0' },
+  expenseRow: { display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--text-secondary)' },
+  provisionTag: { fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, textTransform: 'uppercase', letterSpacing: '0.03em' },
+  expenseTotalRow: { fontWeight: 700, color: 'var(--text-strong)', fontSize: 13.5, paddingTop: 6, borderTop: '1px solid var(--border-soft)' },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'var(--overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 50 },
+  modal: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 20, width: '100%', maxWidth: 460, maxHeight: '88vh', overflowY: 'auto' },
+  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text-strong)' },
+  twoCol: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
+  elementGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 },
+  elementField: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 },
+  submitBtn: { marginTop: 6, background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 6, padding: '10px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+  dirRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-soft)', borderRadius: 6, padding: '8px 10px' },
+};
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+
+<script>
+  (function () {
+    var src = document.getElementById('app-source').textContent;
+    var output = Babel.transform(src, {
+      presets: [['react', { runtime: 'classic' }]],
+      filename: 'app.jsx',
+    }).code;
+    var script = document.createElement('script');
+    script.text = output;
+    document.body.appendChild(script);
+  })();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
